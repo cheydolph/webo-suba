@@ -127,7 +127,33 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8361388,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+// Phones and tablets report a device pixel ratio of 2 to 3, and the engine sizes the canvas in device
+// pixels, so a phone draws 4 to 9 times as many pixels as at ratio 1. That is too much for a weak GPU or
+// Low Power Mode, so on touch screens the ratio the engine sees is stepped down until the canvas fits a
+// pixel budget. The page keeps its CSS size; only the render resolution drops.
+(function limitPixelRatio() {
+	const MAX_CANVAS_PIXELS = 2.5e6;
+	const MAX_TOUCH_SCREEN_SIDE = 1100;
+	const RATIO_STEPS = [3, 2, 1.5, 1];
+	const isTouchScreen = navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) <= MAX_TOUCH_SCREEN_SIDE;
+	const descriptor = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio');
+	if (!isTouchScreen || !descriptor) {
+		return;
+	}
+	const fixedValue = descriptor.value;
+	const nativeRatio = () => (descriptor.get ? descriptor.get.call(window) : fixedValue);
+	Object.defineProperty(window, 'devicePixelRatio', {
+		configurable: true,
+		get() {
+			const native = nativeRatio();
+			const cssPixels = window.innerWidth * window.innerHeight;
+			const step = RATIO_STEPS.find((ratio) => ratio <= native && cssPixels * ratio * ratio <= MAX_CANVAS_PIXELS);
+			return native <= 1 ? native : (step || 1);
+		},
+	});
+}());
+
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8411192,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
